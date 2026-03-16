@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Flame, LogOut, Moon, Search, Sun } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flame, LogOut, Moon, Search, Sun } from "lucide-react";
 
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -30,6 +30,7 @@ type SidebarProps = {
   isLoggingOut: boolean;
   selectedTitleSlug: string | null;
   onProblemSelect: (problem: Problem) => void;
+  onToggleSidebar: () => void;
 };
 
 export const Sidebar = ({
@@ -52,7 +53,8 @@ export const Sidebar = ({
   onLogout,
   isLoggingOut,
   selectedTitleSlug,
-  onProblemSelect
+  onProblemSelect,
+  onToggleSidebar
 }: SidebarProps) => {
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [pageInput, setPageInput] = useState(String(currentPage));
@@ -101,15 +103,25 @@ export const Sidebar = ({
     <aside className="flex h-screen w-full max-w-md flex-col border-r border-border/80 bg-card/80 backdrop-blur sm:w-[30rem]">
     <div className="border-b border-border/70 px-4 py-5 sm:px-5">
       <div className="mb-4">
-        <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">Home</p>
-        <div className="mt-2 flex items-center justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Problems</h1>
-            <p className="text-sm text-muted-foreground">Welcome back, {username}.</p>
+            <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">Home</p>
+            <div className="mt-2">
+              <h1 className="text-2xl font-semibold tracking-tight">Problems</h1>
+              <p className="text-sm text-muted-foreground">Welcome back, {username}.</p>
+            </div>
           </div>
-          <div className="rounded-full border border-border/80 bg-background px-3 py-1 text-xs text-muted-foreground">
-            {displayedProblemsCount} of {filteredProblemsCount}
-          </div>
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="rounded-full border border-border/70 bg-background/70 p-2 text-muted-foreground transition-colors hover:bg-accent"
+            aria-label="Close sidebar"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-3 rounded-full border border-border/80 bg-background px-3 py-1 text-xs text-muted-foreground">
+          {displayedProblemsCount} of {filteredProblemsCount}
         </div>
       </div>
 
@@ -207,9 +219,9 @@ export const Sidebar = ({
       ) : null}
     </div>
 
-    <div className="border-t border-border/70 px-4 py-3 sm:px-5">
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+    <div className="border-t border-border/70 px-4 py-2 sm:px-5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
           <span>Page</span>
           {isEditingPage ? (
             <Input
@@ -233,7 +245,7 @@ export const Sidebar = ({
               onBlur={() => commitPage(pageInput)}
               onFocus={(event) => event.currentTarget.select()}
               autoFocus
-              className="h-7 w-16 rounded-md border-border/60 bg-transparent px-2 text-xs text-center shadow-none focus-visible:ring-1 focus-visible:ring-ring/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="h-6 w-12 rounded-md border-border/60 bg-transparent px-1 text-[11px] text-center shadow-none focus-visible:ring-1 focus-visible:ring-ring/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               aria-label="Go to page"
             />
           ) : (
@@ -250,23 +262,25 @@ export const Sidebar = ({
         <div className="flex items-center gap-2">
           <Button
             type="button"
-            size="sm"
+            size="icon"
             variant="outline"
-            className="rounded-full"
+            className="h-7 w-7 rounded-full"
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage <= 1}
+            aria-label="Previous page"
           >
-            Previous
+            <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
           <Button
             type="button"
-            size="sm"
+            size="icon"
             variant="outline"
-            className="rounded-full"
+            className="h-7 w-7 rounded-full"
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage >= totalPages}
+            aria-label="Next page"
           >
-            Next
+            <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { LoggedOutScreen } from "./components/app/LoggedOutScreen";
 import { Sidebar } from "./components/app/Sidebar";
 import { StartupScreen } from "./components/app/StartupScreen";
 import { Workspace } from "./components/app/Workspace";
+import { cn } from "./lib/utils";
 import { useAuth } from "./hooks/useAuth";
 import { useProblems } from "./hooks/useProblems";
 import { useTheme } from "./hooks/useTheme";
@@ -12,6 +13,7 @@ import type { Problem } from "./types/app";
 export default function App() {
   const { setTheme, isDarkMode } = useTheme();
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const {
     domain,
     setDomain,
@@ -61,29 +63,46 @@ export default function App() {
         />
       ) : (
         <main className="flex min-h-screen bg-background">
-          <Sidebar
-            username={username}
-            orderedProblems={orderedProblems}
-            filteredProblemsCount={filteredProblemsCount}
-            displayPageSize={displayPageSize}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            dailyTitleSlug={dailyTitleSlug}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            difficultyFilter={difficultyFilter}
-            onDifficultyChange={setDifficultyFilter}
-            isProblemsLoading={isProblemsLoading}
-            problemsError={problemsError}
+          <div
+            className={cn(
+              "flex-shrink-0 overflow-hidden transition-[max-width,opacity,transform] duration-300 ease-out",
+              isSidebarOpen
+                ? "max-w-md opacity-100 translate-x-0 sm:max-w-[30rem]"
+                : "max-w-0 opacity-0 -translate-x-4 pointer-events-none"
+            )}
+            aria-hidden={!isSidebarOpen}
+          >
+            <Sidebar
+              username={username}
+              orderedProblems={orderedProblems}
+              filteredProblemsCount={filteredProblemsCount}
+              displayPageSize={displayPageSize}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              dailyTitleSlug={dailyTitleSlug}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              difficultyFilter={difficultyFilter}
+              onDifficultyChange={setDifficultyFilter}
+              isProblemsLoading={isProblemsLoading}
+              problemsError={problemsError}
+              isDarkMode={isDarkMode}
+              onToggleTheme={handleThemeToggle}
+              onLogout={handleLogout}
+              isLoggingOut={isLoggingOut}
+              selectedTitleSlug={selectedProblem?.titleSlug ?? null}
+              onProblemSelect={setSelectedProblem}
+              onToggleSidebar={() => setIsSidebarOpen(false)}
+            />
+          </div>
+          <Workspace
+            problem={selectedProblem}
             isDarkMode={isDarkMode}
-            onToggleTheme={handleThemeToggle}
-            onLogout={handleLogout}
-            isLoggingOut={isLoggingOut}
-            selectedTitleSlug={selectedProblem?.titleSlug ?? null}
-            onProblemSelect={setSelectedProblem}
+            sessionToken={sessionToken}
+            isSidebarOpen={isSidebarOpen}
+            onToggleSidebar={() => setIsSidebarOpen(true)}
           />
-          <Workspace problem={selectedProblem} isDarkMode={isDarkMode} sessionToken={sessionToken} />
         </main>
       )}
 

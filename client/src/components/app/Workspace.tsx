@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
+import { ChevronRight, GripVertical } from "lucide-react";
 
 import { cn } from "../../lib/utils";
 import { getDifficultyClasses } from "../../lib/app-helpers";
+import { Button } from "../ui/button";
 import type { Problem, QuestionDetail, QuestionApiResponse } from "../../types/app";
 
 const monacoLanguageMap: Record<string, string> = {
@@ -20,6 +22,8 @@ type WorkspaceProps = {
   problem: Problem | null;
   isDarkMode: boolean;
   sessionToken: string | null;
+  isSidebarOpen: boolean;
+  onToggleSidebar: () => void;
 };
 
 function toMonacoLanguage(langSlug: string) {
@@ -34,7 +38,13 @@ async function readJsonSafely(response: Response) {
   }
 }
 
-export const Workspace = ({ problem, isDarkMode, sessionToken }: WorkspaceProps) => {
+export const Workspace = ({
+  problem,
+  isDarkMode,
+  sessionToken,
+  isSidebarOpen,
+  onToggleSidebar
+}: WorkspaceProps) => {
   const [question, setQuestion] = useState<QuestionDetail | null>(null);
   const [questionError, setQuestionError] = useState("");
   const [isQuestionLoading, setIsQuestionLoading] = useState(false);
@@ -46,6 +56,12 @@ export const Workspace = ({ problem, isDarkMode, sessionToken }: WorkspaceProps)
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const lastLoadedRef = useRef("");
+  const [splitPercent, setSplitPercent] = useState(52);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window === "undefined" ? true : window.matchMedia("(min-width: 1024px)").matches
+  );
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const languageOptions = useMemo(() => {
     const snippets = question?.codeSnippets ?? [];
@@ -63,6 +79,60 @@ export const Workspace = ({ problem, isDarkMode, sessionToken }: WorkspaceProps)
         value: snippet.langSlug
       }));
   }, [question]);
+
+  const templateCode = useMemo(() => {
+    if (!question || !selectedLanguage) {
+      return null;
+    }
+    return question.codeSnippets?.find((item) => item.langSlug === selectedLanguage)?.code ?? "";
+  }, [question, selectedLanguage]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    const handleChange = (event: MediaQueryListEvent | MediaQueryList) => {
+      setIsDesktop("matches" in event ? event.matches : event.matches);
+    };
+
+    handleChange(mediaQuery);
+    const listener = (event: MediaQueryListEvent) => handleChange(event);
+    mediaQuery.addEventListener("change", listener);
+    return () => mediaQuery.removeEventListener("change", listener);
+  }, []);
+
+  useEffect(() => {
+    if (!isDragging) {
+      return;
+    }
+
+    const handleMove = (event: MouseEvent) => {
+      const container = containerRef.current;
+      if (!container) {
+        return;
+      }
+      const rect = container.getBoundingClientRect();
+      const position = ((event.clientX - rect.left) / rect.width) * 100;
+      const clamped = Math.min(70, Math.max(30, position));
+      setSplitPercent(clamped);
+    };
+
+    const handleUp = () => {
+      setIsDragging(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isDragging]);
 
   useEffect(() => {
     if (!problem) {
@@ -263,7 +333,17 @@ export const Workspace = ({ problem, isDarkMode, sessionToken }: WorkspaceProps)
 
   if (!problem) {
     return (
-      <section className="flex flex-1 items-center justify-center bg-background/70">
+      <section className="relative flex flex-1 items-center justify-center bg-background/70">
+        {!isSidebarOpen ? (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="absolute left-4 top-4 rounded-full border border-border/70 bg-background/80 p-2 text-muted-foreground transition-colors hover:bg-accent"
+            aria-label="Open sidebar"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        ) : null}
         <div className="rounded-3xl border border-dashed border-border/70 bg-card/80 px-10 py-12 text-center">
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">Workspace</p>
           <h2 className="mt-3 text-2xl font-semibold">Select a problem to get started</h2>
@@ -276,10 +356,27 @@ export const Workspace = ({ problem, isDarkMode, sessionToken }: WorkspaceProps)
   }
 
   return (
-    <section className="flex min-h-screen flex-1 flex-col bg-background/70 lg:flex-row">
-      <div className="flex min-h-0 flex-1 flex-col border-border/80 lg:border-r">
+    <section
+      ref={containerRef}
+      className="relative flex min-h-screen min-w-0 flex-1 flex-col bg-background/70 lg:flex-row"
+    >
+      {!isSidebarOpen ? (
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="absolute left-4 top-4 z-10 rounded-full border border-border/70 bg-background/80 p-2 text-muted-foreground transition-colors hover:bg-accent"
+          aria-label="Open sidebar"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      ) : null}
+      <div
+        className="flex min-h-0 min-w-0 flex-1 flex-col"
+        style={isDesktop ? { flexBasis: `${splitPercent}%` } : undefined}
+      >
         <div className="border-b border-border/70 px-6 py-5">
-          <div className="flex flex-wrap items-center gap-3">
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight">{problem.title}</h2>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             <div className="rounded-full border border-border/70 bg-background/70 px-3 py-1 text-xs text-muted-foreground">
               #{problem.frontendId}
             </div>
@@ -292,8 +389,6 @@ export const Workspace = ({ problem, isDarkMode, sessionToken }: WorkspaceProps)
               {problem.difficulty}
             </span>
           </div>
-          <h2 className="mt-3 text-2xl font-semibold tracking-tight">{problem.title}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{problem.titleSlug}</p>
         </div>
 
         <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto px-6 py-6">
@@ -318,7 +413,23 @@ export const Workspace = ({ problem, isDarkMode, sessionToken }: WorkspaceProps)
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div
+        className="hidden w-2 flex-shrink-0 cursor-col-resize items-center justify-center lg:flex"
+        onMouseDown={() => setIsDragging(true)}
+        aria-label="Resize panels"
+        role="separator"
+      >
+        <div className="relative flex h-full w-full items-center justify-center">
+          <div className="h-full w-px bg-border/80" />
+          <span className="absolute flex h-6 w-6 items-center justify-center text-muted-foreground">
+            <GripVertical className="h-3 w-3" />
+          </span>
+        </div>
+      </div>
+      <div
+        className="flex min-h-0 min-w-0 flex-1 flex-col"
+        style={isDesktop ? { flexBasis: `${100 - splitPercent}%` } : undefined}
+      >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-6 py-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">Editor</p>
@@ -329,6 +440,23 @@ export const Workspace = ({ problem, isDarkMode, sessionToken }: WorkspaceProps)
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              disabled={
+                !selectedLanguage || isQuestionLoading || isEditorLoading || templateCode === null
+              }
+              onClick={() => {
+                const nextValue = templateCode ?? "";
+                setEditorValue(nextValue);
+                setIsDirty(true);
+                setEditorError("");
+              }}
+            >
+              Reset
+            </Button>
             {isSaving ? (
               <span className="rounded-full border border-border/70 bg-background/70 px-3 py-1 text-xs text-muted-foreground">
                 Saving...
