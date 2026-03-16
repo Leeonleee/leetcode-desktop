@@ -21,9 +21,49 @@ export type Problem = {
   link: string;
 };
 
+export type CodeSnippet = {
+  lang: string;
+  langSlug: string;
+  code: string;
+};
+
+export type QuestionDetail = {
+  questionId: string;
+  questionFrontendId?: string;
+  title: string;
+  titleSlug: string;
+  isPaidOnly?: boolean;
+  difficulty: "Easy" | "Medium" | "Hard";
+  likes?: number;
+  dislikes?: number;
+  categoryTitle?: string;
+  content?: string;
+  mysqlSchemas?: string;
+  dataSchemas?: string;
+  codeSnippets?: CodeSnippet[];
+  exampleTestcaseList?: string[];
+  metaData?: unknown;
+  acRate?: number;
+  stats?: unknown;
+  hints?: string[];
+  topicTags?: Array<{ name: string; slug: string }>;
+  similarQuestionList?: Array<{
+    difficulty: string;
+    titleSlug: string;
+    title: string;
+    isPaidOnly: boolean;
+  }>;
+};
+
 export type LoginApiResponse = {
   sessionToken?: string;
   user?: User;
+  message?: string;
+};
+
+export type QuestionApiResponse = {
+  ok?: boolean;
+  question?: QuestionDetail;
   message?: string;
 };
 

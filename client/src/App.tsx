@@ -1,14 +1,17 @@
+import { useState } from "react";
 import { LoginModal } from "./components/app/LoginModal";
 import { LoggedOutScreen } from "./components/app/LoggedOutScreen";
 import { Sidebar } from "./components/app/Sidebar";
 import { StartupScreen } from "./components/app/StartupScreen";
-import { WorkspacePlaceholder } from "./components/app/WorkspacePlaceholder";
+import { Workspace } from "./components/app/Workspace";
 import { useAuth } from "./hooks/useAuth";
 import { useProblems } from "./hooks/useProblems";
 import { useTheme } from "./hooks/useTheme";
+import type { Problem } from "./types/app";
 
 export default function App() {
   const { setTheme, isDarkMode } = useTheme();
+  const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
   const {
     domain,
     setDomain,
@@ -77,8 +80,10 @@ export default function App() {
             onToggleTheme={handleThemeToggle}
             onLogout={handleLogout}
             isLoggingOut={isLoggingOut}
+            selectedTitleSlug={selectedProblem?.titleSlug ?? null}
+            onProblemSelect={setSelectedProblem}
           />
-          <WorkspacePlaceholder />
+          <Workspace problem={selectedProblem} isDarkMode={isDarkMode} sessionToken={sessionToken} />
         </main>
       )}
 

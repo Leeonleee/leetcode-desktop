@@ -28,6 +28,8 @@ type SidebarProps = {
   onToggleTheme: (checked: boolean) => void;
   onLogout: () => void;
   isLoggingOut: boolean;
+  selectedTitleSlug: string | null;
+  onProblemSelect: (problem: Problem) => void;
 };
 
 export const Sidebar = ({
@@ -48,7 +50,9 @@ export const Sidebar = ({
   isDarkMode,
   onToggleTheme,
   onLogout,
-  isLoggingOut
+  isLoggingOut,
+  selectedTitleSlug,
+  onProblemSelect
 }: SidebarProps) => {
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [pageInput, setPageInput] = useState(String(currentPage));
@@ -158,6 +162,7 @@ export const Sidebar = ({
         <div className="space-y-2">
           {orderedProblems.map((problem) => {
             const isDaily = problem.titleSlug === dailyTitleSlug;
+            const isSelected = problem.titleSlug === selectedTitleSlug;
 
             return (
               <button
@@ -167,8 +172,11 @@ export const Sidebar = ({
                   "flex w-full flex-col gap-3 rounded-2xl border px-4 py-3 text-left transition-colors",
                   isDaily
                     ? "border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15"
-                    : "border-border/70 bg-background/70 hover:bg-accent"
+                    : "border-border/70 bg-background/70 hover:bg-accent",
+                  isSelected ? "ring-1 ring-primary/35" : null
                 )}
+                aria-pressed={isSelected}
+                onClick={() => onProblemSelect(problem)}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
