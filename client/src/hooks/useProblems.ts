@@ -79,11 +79,14 @@ export const useProblems = (sessionToken: string | null) => {
 
     return problems.filter((problem) => {
       const matchesDifficulty = difficultyFilter === "All" || problem.difficulty === difficultyFilter;
+      const frontendIdText = String(problem.frontendId ?? "").toLowerCase();
+      const titleText = String(problem.title ?? "").toLowerCase();
+      const titleSlugText = String(problem.titleSlug ?? "").toLowerCase();
       const matchesSearch =
         !normalizedQuery ||
-        problem.title.toLowerCase().includes(normalizedQuery) ||
-        problem.titleSlug.toLowerCase().includes(normalizedQuery) ||
-        problem.frontendId.toLowerCase().includes(normalizedQuery);
+        titleText.includes(normalizedQuery) ||
+        titleSlugText.includes(normalizedQuery) ||
+        frontendIdText.includes(normalizedQuery);
 
       return matchesDifficulty && matchesSearch;
     });
