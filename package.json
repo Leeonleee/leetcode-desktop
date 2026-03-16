@@ -1,17 +1,23 @@
 {
-  "name": "leetcode-web-auth-check",
+  "name": "leetcode-desktop",
   "private": true,
   "workspaces": [
     "server",
     "client"
   ],
   "scripts": {
-    "dev": "concurrently -k \"npm run dev --workspace server\" \"npm run dev --workspace client\"",
+    "dev": "npm run dev:web",
+    "dev:web": "concurrently -k \"npm run dev --workspace server\" \"npm run dev --workspace client\"",
     "dev:server": "npm run dev --workspace server",
     "dev:client": "npm run dev --workspace client",
+    "dev:electron": "concurrently -k \"npm run dev --workspace server\" \"npm run dev --workspace client\" \"npm run electron:wait\"",
+    "electron:wait": "wait-on tcp:3001 tcp:5173 && electron ./electron/main.cjs",
+    "electron": "electron ./electron/main.cjs",
     "build": "npm run build --workspace server && npm run build --workspace client"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "electron": "^41.0.2",
+    "wait-on": "^8.0.4"
   }
 }

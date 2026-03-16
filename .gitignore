@@ -2,3 +2,7 @@ node_modules
 server/dist
 client/dist
 .DS_Store
+local-solutions
+*.tsbuildinfo
+client/vite.config.js
+client/vite.config.d.ts
