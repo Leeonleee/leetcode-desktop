@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Flame, LogOut, Moon, Search, Sun } from "lucide-react";
 
 import { Button } from "../ui/button";
@@ -46,8 +47,39 @@ export const Sidebar = ({
   onToggleTheme,
   onLogout,
   isLoggingOut
-}: SidebarProps) => (
-  <aside className="flex h-screen w-full max-w-md flex-col border-r border-border/80 bg-card/80 backdrop-blur sm:w-[30rem]">
+}: SidebarProps) => {
+  const [isEditingPage, setIsEditingPage] = useState(false);
+  const [pageInput, setPageInput] = useState(String(currentPage));
+
+  useEffect(() => {
+    if (!isEditingPage) {
+      setPageInput(String(currentPage));
+    }
+  }, [currentPage, isEditingPage]);
+
+  const commitPage = (value: string) => {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) {
+      setIsEditingPage(false);
+      setPageInput(String(currentPage));
+      return;
+    }
+
+    const nextPage = Math.min(Math.max(parsed, 1), totalPages);
+    setIsEditingPage(false);
+    setPageInput(String(nextPage));
+    if (nextPage !== currentPage) {
+      onPageChange(nextPage);
+    }
+  };
+
+  const cancelEdit = () => {
+    setIsEditingPage(false);
+    setPageInput(String(currentPage));
+  };
+
+  return (
+    <aside className="flex h-screen w-full max-w-md flex-col border-r border-border/80 bg-card/80 backdrop-blur sm:w-[30rem]">
     <div className="border-b border-border/70 px-4 py-5 sm:px-5">
       <div className="mb-4">
         <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">Home</p>
@@ -154,8 +186,43 @@ export const Sidebar = ({
 
     <div className="border-t border-border/70 px-4 py-3 sm:px-5">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">
-          Page {currentPage} of {totalPages}
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <span>Page</span>
+          {isEditingPage ? (
+            <Input
+              type="number"
+              min={1}
+              max={totalPages}
+              step={1}
+              value={pageInput}
+              onChange={(event) => setPageInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  commitPage(pageInput);
+                }
+
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  cancelEdit();
+                }
+              }}
+              onBlur={() => commitPage(pageInput)}
+              onFocus={(event) => event.currentTarget.select()}
+              autoFocus
+              className="h-7 w-16 rounded-md border-border/60 bg-transparent px-2 text-xs text-center shadow-none focus-visible:ring-1 focus-visible:ring-ring/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              aria-label="Go to page"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsEditingPage(true)}
+              className="rounded px-1 font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              {currentPage}
+            </button>
+          )}
+          <span>of {totalPages}</span>
         </span>
         <div className="flex items-center gap-2">
           <Button
@@ -208,4 +275,5 @@ export const Sidebar = ({
       </Button>
     </div>
   </aside>
-);
+  );
+};
