@@ -11,6 +11,10 @@ import { DifficultyFilter, Problem } from "../../types/app";
 type SidebarProps = {
   username: string;
   orderedProblems: Problem[];
+  filteredProblemsCount: number;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
   dailyTitleSlug: string | null;
   searchQuery: string;
   onSearchChange: (value: string) => void;
@@ -27,6 +31,10 @@ type SidebarProps = {
 export const Sidebar = ({
   username,
   orderedProblems,
+  filteredProblemsCount,
+  currentPage,
+  totalPages,
+  onPageChange,
   dailyTitleSlug,
   searchQuery,
   onSearchChange,
@@ -49,7 +57,7 @@ export const Sidebar = ({
             <p className="text-sm text-muted-foreground">Welcome back, {username}.</p>
           </div>
           <div className="rounded-full border border-border/80 bg-background px-3 py-1 text-xs text-muted-foreground">
-            {orderedProblems.length} shown
+            {orderedProblems.length} of {filteredProblemsCount}
           </div>
         </div>
       </div>
@@ -59,7 +67,7 @@ export const Sidebar = ({
         <Input
           value={searchQuery}
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Search title, slug, or number"
+          placeholder="Search title or number"
           className="h-11 rounded-xl pl-10"
         />
       </div>
@@ -142,6 +150,36 @@ export const Sidebar = ({
           })}
         </div>
       ) : null}
+    </div>
+
+    <div className="border-t border-border/70 px-4 py-3 sm:px-5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          Page {currentPage} of {totalPages}
+        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="rounded-full"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage <= 1}
+          >
+            Previous
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="rounded-full"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
     </div>
 
     <div className="border-t border-border/70 px-4 py-4 sm:px-5">

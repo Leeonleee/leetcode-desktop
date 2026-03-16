@@ -29,6 +29,10 @@ export default function App() {
   } = useAuth();
   const {
     orderedProblems,
+    filteredProblemsCount,
+    currentPage,
+    totalPages,
+    setCurrentPage,
     dailyTitleSlug,
     searchQuery,
     setSearchQuery,
@@ -56,6 +60,10 @@ export default function App() {
           <Sidebar
             username={username}
             orderedProblems={orderedProblems}
+            filteredProblemsCount={filteredProblemsCount}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
             dailyTitleSlug={dailyTitleSlug}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}

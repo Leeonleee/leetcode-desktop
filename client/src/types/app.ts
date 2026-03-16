@@ -28,6 +28,10 @@ export type LoginApiResponse = {
 };
 
 export type ProblemsApiResponse = {
+  ok?: boolean;
+  page?: number;
+  pageSize?: number;
+  total?: number;
   items?: Problem[];
   message?: string;
 };
