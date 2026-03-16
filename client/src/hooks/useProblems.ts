@@ -162,6 +162,7 @@ export const useProblems = (sessionToken: string | null) => {
     problems,
     orderedProblems: pagedProblems,
     filteredProblemsCount: orderedProblems.length,
+    displayPageSize,
     currentPage,
     totalPages,
     setCurrentPage,

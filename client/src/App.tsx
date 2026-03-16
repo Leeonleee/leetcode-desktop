@@ -30,6 +30,7 @@ export default function App() {
   const {
     orderedProblems,
     filteredProblemsCount,
+    displayPageSize,
     currentPage,
     totalPages,
     setCurrentPage,
@@ -61,6 +62,7 @@ export default function App() {
             username={username}
             orderedProblems={orderedProblems}
             filteredProblemsCount={filteredProblemsCount}
+            displayPageSize={displayPageSize}
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}

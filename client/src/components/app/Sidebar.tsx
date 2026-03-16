@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Flame, LogOut, Moon, Search, Sun } from "lucide-react";
 
 import { Button } from "../ui/button";
@@ -13,6 +13,7 @@ type SidebarProps = {
   username: string;
   orderedProblems: Problem[];
   filteredProblemsCount: number;
+  displayPageSize: number;
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -33,6 +34,7 @@ export const Sidebar = ({
   username,
   orderedProblems,
   filteredProblemsCount,
+  displayPageSize,
   currentPage,
   totalPages,
   onPageChange,
@@ -50,12 +52,25 @@ export const Sidebar = ({
 }: SidebarProps) => {
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [pageInput, setPageInput] = useState(String(currentPage));
+  const displayedProblemsCount =
+    filteredProblemsCount === 0 ? 0 : Math.min(filteredProblemsCount, currentPage * displayPageSize);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!isEditingPage) {
       setPageInput(String(currentPage));
     }
   }, [currentPage, isEditingPage]);
+
+  useEffect(() => {
+    const container = listRef.current;
+    if (!container) {
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    container.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
+  }, [currentPage]);
 
   const commitPage = (value: string) => {
     const parsed = Number.parseInt(value, 10);
@@ -89,7 +104,7 @@ export const Sidebar = ({
             <p className="text-sm text-muted-foreground">Welcome back, {username}.</p>
           </div>
           <div className="rounded-full border border-border/80 bg-background px-3 py-1 text-xs text-muted-foreground">
-            {orderedProblems.length} of {filteredProblemsCount}
+            {displayedProblemsCount} of {filteredProblemsCount}
           </div>
         </div>
       </div>
@@ -120,7 +135,7 @@ export const Sidebar = ({
       </div>
     </div>
 
-    <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
+    <div ref={listRef} className="sidebar-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
       {isProblemsLoading ? (
         <div className="rounded-2xl border border-dashed border-border bg-background/60 px-4 py-6 text-sm text-muted-foreground">
           Loading problems...
