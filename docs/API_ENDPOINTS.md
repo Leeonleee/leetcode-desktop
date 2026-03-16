@@ -19,6 +19,10 @@ Base URL (local): `http://localhost:3001`
 }
 ```
 
+Current frontend wiring status:
+- Wired in `client/src/App.tsx`: `POST /api/auth/login`, `POST /api/auth/logout`
+- Remaining endpoints below are backend-ready and intended for upcoming problem browser/editor screens.
+
 ## 1) Health
 
 ### `GET /api/health`

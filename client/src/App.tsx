@@ -1,428 +1,325 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { LogOut, Moon, ShieldCheck, Sun, X } from "lucide-react";
 
-type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
-
-type ApiCallResult = {
-  title: string;
-  status: number;
-  body: JsonValue;
-};
+import { Button } from "./components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./components/ui/card";
+import { Input } from "./components/ui/input";
+import { Label } from "./components/ui/label";
+import { Switch } from "./components/ui/switch";
+import { Textarea } from "./components/ui/textarea";
 
 type Domain = "com" | "cn";
+type Theme = "light" | "dark";
 
-const pretty = (value: unknown) => JSON.stringify(value, null, 2);
+type LoginApiResponse = {
+  sessionToken?: string;
+  user?: {
+    username?: string;
+    slug?: string;
+  };
+  message?: string;
+};
+
+const THEME_KEY = "leetcode-desktop-theme";
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const getStoredTheme = (): Theme => {
+  if (typeof window === "undefined") {
+    return "light";
+  }
+
+  const storedTheme = window.localStorage.getItem(THEME_KEY);
+  if (storedTheme === "light" || storedTheme === "dark") {
+    return storedTheme;
+  }
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+};
+
+const parseJson = async (response: Response): Promise<unknown> => {
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+};
+
+const getErrorMessage = (payload: unknown, fallback: string): string => {
+  if (isRecord(payload) && typeof payload.message === "string" && payload.message.trim()) {
+    return payload.message;
+  }
+
+  return fallback;
+};
 
 export default function App() {
+  const [theme, setTheme] = useState<Theme>(getStoredTheme);
   const [domain, setDomain] = useState<Domain>("com");
   const [cookie, setCookie] = useState("");
-  const [sessionToken, setSessionToken] = useState("");
-  const [lastResult, setLastResult] = useState<ApiCallResult | null>(null);
-  const [loading, setLoading] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [username, setUsername] = useState("");
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const [problemQuery, setProblemQuery] = useState("");
-  const [problemSlug, setProblemSlug] = useState("two-sum");
-  const [runSlug, setRunSlug] = useState("two-sum");
-  const [questionId, setQuestionId] = useState("1");
-  const [language, setLanguage] = useState("python3");
-  const [code, setCode] = useState("class Solution:\n    def twoSum(self, nums, target):\n        return []\n");
-  const [dataInput, setDataInput] = useState("[2,7,11,15]\n9");
-  const [submissionId, setSubmissionId] = useState("");
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    window.localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
 
-  const authHeader = useMemo(() => {
-    if (!sessionToken.trim()) {
-      return null;
-    }
-
-    return `Bearer ${sessionToken.trim()}`;
-  }, [sessionToken]);
-
-  async function callApi(
-    title: string,
-    path: string,
-    init?: {
-      method?: string;
-      body?: Record<string, unknown>;
-      requireAuth?: boolean;
-    }
-  ) {
-    if (init?.requireAuth && !authHeader) {
-      setLastResult({
-        title,
-        status: 0,
-        body: { error: "Set a session token first (login endpoint returns one)." }
-      });
+  useEffect(() => {
+    if (!isLoginModalOpen) {
       return;
     }
 
-    setLoading(title);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isSubmitting) {
+        setIsLoginModalOpen(false);
+        setErrorMessage("");
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isLoginModalOpen, isSubmitting]);
+
+  const handleExit = () => {
+    window.close();
+  };
+
+  const openLoginModal = () => {
+    setErrorMessage("");
+    setIsLoginModalOpen(true);
+  };
+
+  const closeLoginModal = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsLoginModalOpen(false);
+    setErrorMessage("");
+  };
+
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorMessage("");
+
+    const normalizedCookie = cookie.trim();
+    if (!normalizedCookie) {
+      setErrorMessage("Paste your full LeetCode cookie header before logging in.");
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
-      const response = await fetch(path, {
-        method: init?.method || "GET",
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          ...(authHeader ? { Authorization: authHeader } : {})
+          "Content-Type": "application/json"
         },
-        body: init?.body ? JSON.stringify(init.body) : undefined
+        body: JSON.stringify({ cookie: normalizedCookie, domain })
       });
 
-      const text = await response.text();
-      const body = text ? (JSON.parse(text) as JsonValue) : null;
-
-      setLastResult({
-        title,
-        status: response.status,
-        body
-      });
-
-      if (title === "POST /api/auth/login" && response.ok) {
-        const token =
-          typeof body === "object" &&
-          body !== null &&
-          "sessionToken" in body &&
-          typeof body.sessionToken === "string"
-            ? body.sessionToken
-            : "";
-
-        if (token) {
-          setSessionToken(token);
-        }
+      const payload = (await parseJson(response)) as LoginApiResponse | null;
+      if (!response.ok) {
+        setErrorMessage(getErrorMessage(payload, "Login failed. Verify the cookie header and try again."));
+        return;
       }
 
-      if (
-        (title === "POST /api/problems/:titleSlug/run" ||
-          title === "POST /api/problems/:titleSlug/submit") &&
-        response.ok
-      ) {
-        const maybeId =
-          typeof body === "object" && body !== null
-            ? (body as { runId?: string; submissionId?: string }).runId ||
-              (body as { runId?: string; submissionId?: string }).submissionId ||
-              ""
-            : "";
-
-        if (maybeId) {
-          setSubmissionId(maybeId);
-        }
+      const token = payload?.sessionToken?.trim();
+      if (!token) {
+        setErrorMessage("Login succeeded but no session token was returned by the backend.");
+        return;
       }
+
+      setSessionToken(token);
+      setUsername(payload?.user?.username || payload?.user?.slug || "LeetCode User");
+      setCookie("");
+      setIsLoginModalOpen(false);
     } catch (error) {
-      setLastResult({
-        title,
-        status: 0,
-        body: { error: error instanceof Error ? error.message : "Unknown error" }
-      });
+      setErrorMessage(error instanceof Error ? error.message : "Failed to reach backend.");
     } finally {
-      setLoading(null);
+      setIsSubmitting(false);
     }
-  }
+  };
 
-  async function onLogin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    await callApi("POST /api/auth/login", "/api/auth/login", {
-      method: "POST",
-      body: { cookie, domain }
-    });
-  }
+  const handleLogout = async () => {
+    setErrorMessage("");
+    setIsLoggingOut(true);
+
+    try {
+      if (sessionToken) {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionToken}`
+          }
+        });
+      }
+    } finally {
+      setIsLoggingOut(false);
+      setSessionToken(null);
+      setUsername("");
+    }
+  };
+
+  const isDarkMode = theme === "dark";
 
   return (
-    <main className="page">
-      <header className="hero">
-        <h1>LeetCode Desktop API Playground</h1>
-        <p>
-          Placeholder UI to test backend endpoints before building the final desktop experience.
-        </p>
-      </header>
+    <div className="min-h-full">
+      {!sessionToken ? (
+        <main className="relative min-h-screen">
+          <section className="flex min-h-screen animate-fade-up items-center justify-center px-4">
+            <div className="space-y-10 text-center">
+              <h1 className="text-5xl font-semibold tracking-tight sm:text-6xl">Leetcode Desktop</h1>
+              <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+                <Button type="button" size="lg" onClick={openLoginModal} className="h-14 min-w-44 text-lg">
+                  Login
+                </Button>
+                <Button type="button" size="lg" variant="outline" onClick={handleExit} className="h-14 min-w-44 text-lg">
+                  Exit
+                </Button>
+              </div>
+            </div>
+          </section>
+          <footer className="pointer-events-none fixed inset-x-0 bottom-4 z-10 flex justify-center px-4">
+            <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-border/80 bg-card/80 px-4 py-2 shadow-sm backdrop-blur">
+              <Sun className="h-4 w-4 text-muted-foreground" />
+              <Switch
+                checked={isDarkMode}
+                onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+                aria-label="Toggle dark mode"
+              />
+              <Moon className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </footer>
+        </main>
+      ) : (
+        <main className="mx-auto flex min-h-full w-full max-w-lg flex-col justify-center px-4 py-10 sm:px-6">
+          <Card className="animate-fade-up border-border/90 bg-card/90 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <ShieldCheck className="h-5 w-5" />
+                Logged in
+              </CardTitle>
+              <CardDescription>This is a placeholder page after successful auth.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-md border border-border bg-muted p-4 text-sm">
+                Welcome {username}. Problem list and editor screens are coming next.
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="session-preview">Session Token</Label>
+                <Input
+                  id="session-preview"
+                  value={sessionToken}
+                  readOnly
+                  className="font-mono text-xs"
+                  aria-readonly
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:flex-1"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                {isLoggingOut ? "Logging out..." : "Logout"}
+              </Button>
+              <Button type="button" className="w-full sm:flex-1" onClick={handleExit}>
+                <X className="mr-2 h-4 w-4" />
+                Exit
+              </Button>
+            </CardFooter>
+          </Card>
+        </main>
+      )}
 
-      <section className="card">
-        <h2>Auth</h2>
-        <form onSubmit={onLogin} className="stack">
-          <label>
-            Domain
-            <select value={domain} onChange={(e) => setDomain(e.target.value as Domain)}>
-              <option value="com">leetcode.com</option>
-              <option value="cn">leetcode.cn</option>
-            </select>
-          </label>
-          <label>
-            Cookie Header
-            <textarea
-              value={cookie}
-              onChange={(e) => setCookie(e.target.value)}
-              rows={4}
-              placeholder="csrftoken=...; LEETCODE_SESSION=...; ..."
-            />
-          </label>
-          <div className="row">
-            <button type="submit" disabled={loading !== null}>
-              {loading === "POST /api/auth/login" ? "Loading..." : "POST /api/auth/login"}
-            </button>
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() => callApi("GET /api/auth/me", "/api/auth/me", { requireAuth: true })}
-            >
-              GET /api/auth/me
-            </button>
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() =>
-                callApi("POST /api/auth/logout", "/api/auth/logout", {
-                  method: "POST",
-                  requireAuth: true
-                })
-              }
-            >
-              POST /api/auth/logout
-            </button>
-          </div>
-        </form>
+      {isLoginModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6 backdrop-blur-sm">
+          <Card className="w-full max-w-xl border-border/90 bg-card shadow-xl">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <CardTitle className="text-2xl">Login</CardTitle>
+                <Button type="button" variant="ghost" size="icon" onClick={closeLoginModal} aria-label="Close login modal">
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <CardDescription>Select the domain and paste your cookie header.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-5" onSubmit={handleLogin}>
+                <div className="space-y-2">
+                  <Label>Domain</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={domain === "com" ? "default" : "outline"}
+                      onClick={() => setDomain("com")}
+                    >
+                      leetcode.com
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={domain === "cn" ? "default" : "outline"}
+                      onClick={() => setDomain("cn")}
+                    >
+                      leetcode.cn
+                    </Button>
+                  </div>
+                </div>
 
-        <label>
-          Session Token
-          <input
-            value={sessionToken}
-            onChange={(e) => setSessionToken(e.target.value)}
-            placeholder="Auto-filled after login"
-          />
-        </label>
-      </section>
+                <div className="space-y-2">
+                  <Label htmlFor="cookie">Cookie Header</Label>
+                  <Textarea
+                    id="cookie"
+                    value={cookie}
+                    onChange={(event) => setCookie(event.target.value)}
+                    placeholder="csrftoken=...; LEETCODE_SESSION=...; ..."
+                    rows={8}
+                  />
+                </div>
 
-      <section className="card">
-        <h2>Problems</h2>
-        <div className="stack">
-          <div className="row">
-            <input
-              value={problemQuery}
-              onChange={(e) => setProblemQuery(e.target.value)}
-              placeholder="Search query"
-            />
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() =>
-                callApi(
-                  "GET /api/problems",
-                  `/api/problems?search=${encodeURIComponent(problemQuery)}&page=1&pageSize=20`,
-                  { requireAuth: true }
-                )
-              }
-            >
-              GET /api/problems
-            </button>
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() => callApi("GET /api/problems/daily", "/api/problems/daily", { requireAuth: true })}
-            >
-              GET /api/problems/daily
-            </button>
-          </div>
+                {errorMessage ? (
+                  <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground/90">
+                    {errorMessage}
+                  </div>
+                ) : null}
 
-          <div className="row">
-            <input
-              value={problemSlug}
-              onChange={(e) => setProblemSlug(e.target.value)}
-              placeholder="titleSlug"
-            />
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() =>
-                callApi(
-                  "GET /api/problems/:titleSlug",
-                  `/api/problems/${encodeURIComponent(problemSlug)}`,
-                  { requireAuth: true }
-                )
-              }
-            >
-              GET /api/problems/:titleSlug
-            </button>
-          </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button type="submit" className="w-full sm:flex-1" disabled={isSubmitting}>
+                    {isSubmitting ? "Submitting..." : "Submit"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full sm:flex-1"
+                    onClick={closeLoginModal}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
-      </section>
-
-      <section className="card">
-        <h2>Run / Submit / Check</h2>
-        <div className="stack">
-          <div className="grid2">
-            <label>
-              titleSlug
-              <input value={runSlug} onChange={(e) => setRunSlug(e.target.value)} />
-            </label>
-            <label>
-              questionId
-              <input value={questionId} onChange={(e) => setQuestionId(e.target.value)} />
-            </label>
-          </div>
-
-          <label>
-            language
-            <input value={language} onChange={(e) => setLanguage(e.target.value)} />
-          </label>
-
-          <label>
-            typedCode
-            <textarea value={code} onChange={(e) => setCode(e.target.value)} rows={6} />
-          </label>
-
-          <label>
-            dataInput (for run)
-            <textarea value={dataInput} onChange={(e) => setDataInput(e.target.value)} rows={3} />
-          </label>
-
-          <div className="row">
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() =>
-                callApi(
-                  "POST /api/problems/:titleSlug/run",
-                  `/api/problems/${encodeURIComponent(runSlug)}/run`,
-                  {
-                    method: "POST",
-                    requireAuth: true,
-                    body: {
-                      lang: language,
-                      questionId,
-                      typedCode: code,
-                      dataInput
-                    }
-                  }
-                )
-              }
-            >
-              POST /api/problems/:titleSlug/run
-            </button>
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() =>
-                callApi(
-                  "POST /api/problems/:titleSlug/submit",
-                  `/api/problems/${encodeURIComponent(runSlug)}/submit`,
-                  {
-                    method: "POST",
-                    requireAuth: true,
-                    body: {
-                      lang: language,
-                      questionId,
-                      typedCode: code
-                    }
-                  }
-                )
-              }
-            >
-              POST /api/problems/:titleSlug/submit
-            </button>
-          </div>
-
-          <div className="row">
-            <input
-              value={submissionId}
-              onChange={(e) => setSubmissionId(e.target.value)}
-              placeholder="submission/run id"
-            />
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() =>
-                callApi(
-                  "GET /api/submissions/:id/check",
-                  `/api/submissions/${encodeURIComponent(submissionId)}/check`,
-                  {
-                    requireAuth: true
-                  }
-                )
-              }
-            >
-              GET /api/submissions/:id/check
-            </button>
-          </div>
-
-          <div className="row">
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() =>
-                callApi(
-                  "GET /api/problems/:questionId/submissions/latest",
-                  `/api/problems/${encodeURIComponent(questionId)}/submissions/latest?lang=${encodeURIComponent(language)}`,
-                  {
-                    requireAuth: true
-                  }
-                )
-              }
-            >
-              GET /api/problems/:questionId/submissions/latest
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="card">
-        <h2>Local Code Storage</h2>
-        <div className="stack">
-          <div className="row">
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() =>
-                callApi("PUT /api/code/:titleSlug", `/api/code/${encodeURIComponent(runSlug)}`, {
-                  method: "PUT",
-                  body: {
-                    lang: language,
-                    code
-                  }
-                })
-              }
-            >
-              PUT /api/code/:titleSlug
-            </button>
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() =>
-                callApi(
-                  "GET /api/code/:titleSlug",
-                  `/api/code/${encodeURIComponent(runSlug)}?lang=${encodeURIComponent(language)}`
-                )
-              }
-            >
-              GET /api/code/:titleSlug
-            </button>
-            <button
-              type="button"
-              disabled={loading !== null}
-              onClick={() => callApi("GET /api/code", "/api/code")}
-            >
-              GET /api/code
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="card">
-        <h2>Health</h2>
-        <button
-          type="button"
-          disabled={loading !== null}
-          onClick={() => callApi("GET /api/health", "/api/health")}
-        >
-          GET /api/health
-        </button>
-      </section>
-
-      <section className="card">
-        <h2>Last Response</h2>
-        <p>
-          <strong>Endpoint:</strong> {lastResult?.title || "(none)"}
-        </p>
-        <p>
-          <strong>Status:</strong> {lastResult ? String(lastResult.status) : "(none)"}
-        </p>
-        <pre>{lastResult ? pretty(lastResult.body) : "No request yet"}</pre>
-      </section>
-    </main>
+      ) : null}
+    </div>
   );
 }
