@@ -20,6 +20,9 @@ This repository currently contains:
 ## Project Structure
 
 - `client/`: Vite + React + Tailwind frontend with reusable UI primitives in `src/components/ui/`.
+  - `client/src/components/app/`: screen-level UI components for the auth + sidebar flow.
+  - `client/src/hooks/`: app-specific hooks for auth, theme, and problem loading.
+  - `client/src/types/`: shared frontend types for domain, problems, and API payloads.
 - `server/`: Express backend with organized modules:
   - `controllers/`
   - `routes/`
