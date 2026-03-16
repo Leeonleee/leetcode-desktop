@@ -120,7 +120,7 @@ export const Sidebar = ({
       </div>
     </div>
 
-    <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
+    <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
       {isProblemsLoading ? (
         <div className="rounded-2xl border border-dashed border-border bg-background/60 px-4 py-6 text-sm text-muted-foreground">
           Loading problems...
