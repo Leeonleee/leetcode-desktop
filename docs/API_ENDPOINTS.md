@@ -20,8 +20,8 @@ Base URL (local): `http://localhost:3001`
 ```
 
 Current frontend wiring status:
-- Wired in `client/src/App.tsx`: `POST /api/auth/login`, `POST /api/auth/logout`
-- Remaining endpoints below are backend-ready and intended for upcoming problem browser/editor screens.
+- Wired in `client/src/App.tsx`: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/problems`, `GET /api/problems/daily`
+- Problem detail/editor/run/submit endpoints below are backend-ready for upcoming screens.
 
 ## 1) Health
 
@@ -54,6 +54,7 @@ Request body:
 ```
 
 - `domain`: `"com"` or `"cn"`.
+- The desktop client may call this automatically on startup using a cached `{cookie, domain}` pair stored by Electron.
 
 Example success response:
 
@@ -78,6 +79,9 @@ Example success response:
 Invalidates the current local backend session.
 
 Auth required: yes
+
+Desktop client behavior:
+- Logout also clears the Electron-side cached auth payload so the next launch returns to the login screen unless a fresh login succeeds.
 
 Example success response:
 

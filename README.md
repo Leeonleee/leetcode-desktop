@@ -4,7 +4,7 @@ A desktop-first LeetCode experience inspired by `leetcode.nvim`: use your LeetCo
 
 This repository currently contains:
 - A modular React + Express + TypeScript backend/frontend workspace.
-- A Tailwind-based auth shell UI with reusable components (login modal, theme toggle, logged-in placeholder state).
+- A Tailwind-based desktop UI with auth, cached auto-login, and a problem-browser sidebar.
 - An Electron shell to run the app as a desktop window.
 - A local copy of `leetcode.nvim` used as a reference for endpoint behavior and payload shapes.
 
@@ -13,7 +13,8 @@ This repository currently contains:
 - Implemented: core backend endpoints for auth, problems, run/submit/check, daily challenge, and latest submission restore.
 - Implemented: local code-file storage endpoints (`local-solutions/` on disk).
 - Implemented: Electron dev bootstrap (`npm run dev:electron`).
-- Implemented: frontend auth experience (`/api/auth/login` + `/api/auth/logout`) with domain selection and cookie-header input.
+- Implemented: frontend auth experience with domain selection, cookie-header input, cache-file auto-login, and logout.
+- Implemented: left home sidebar with search, difficulty filters, pinned daily question, and problem list.
 - In progress: final product UI (sidebar browser + Monaco-style editor experience).
 
 ## Project Structure
@@ -59,19 +60,21 @@ npm run dev:electron
 
 ## Current Frontend Flow
 
-1. Launch screen shows centered `Login` and `Exit` actions.
-2. Theme toggle is pinned at the bottom and persists to `localStorage` (`leetcode-desktop-theme`).
-3. Login modal collects:
+1. App start attempts auto-login from an Electron-managed cache file containing the last successful `{cookie, domain}` pair.
+2. If cached login fails or no cache file exists, the launch screen shows centered `Login` and `Exit` actions.
+3. Theme toggle is pinned at the bottom and persists to `localStorage` (`leetcode-desktop-theme`).
+4. Login modal collects:
    - Domain: `leetcode.com` or `leetcode.cn`
    - Full cookie header string
-4. On successful login:
+5. On successful login:
    - `sessionToken` is stored in app state
-   - A logged-in placeholder card is shown with session token preview
-5. Logout clears local UI session and attempts `POST /api/auth/logout`.
+   - The cookie and domain are written to an Electron cache file for next launch
+   - The home page sidebar loads the problem list and pins the daily question to the top
+6. Logout clears local UI session, clears the cache file, and attempts `POST /api/auth/logout`.
 
 Notes:
-- The frontend currently integrates auth endpoints directly.
-- Problem browsing/editor/run/submit UI is not wired yet, but backend endpoints are implemented and documented.
+- The frontend currently integrates auth plus problem-list endpoints directly.
+- The main editor/detail panel is still not wired yet.
 
 ## Backend Overview
 
@@ -110,6 +113,7 @@ Auth notes:
 - `POST /api/auth/login` accepts:
   - `cookie`: full browser `Cookie` request-header value
   - `domain`: `"com"` or `"cn"`
+- In desktop mode, the last successful `{cookie, domain}` pair is cached in Electron user data and retried on next app start.
 - Protected endpoints require: `Authorization: Bearer <sessionToken>`
 
 ## Upstream LeetCode Endpoints Used
